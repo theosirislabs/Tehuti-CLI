@@ -1289,14 +1289,21 @@ function ChatUI({
 			]);
 		} else {
 			const list = sessions
-				.map((s, i) => `${i + 1}. ${s.name || s.id.slice(0, 8)} (${s.messageCount} msgs)`)
+				.map((s, i) => {
+					const date = new Date(s.updatedAt).toLocaleDateString();
+					const time = new Date(s.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+					const msgs = `${s.messageCount} msgs`;
+					const tokens = `${s.tokensUsed.toLocaleString()} tokens`;
+					const model = s.model.split('/').pop()?.split(':')[0] || s.model;
+					return `  ${i + 1}. ${s.name || s.id.slice(0, 8)} (${msgs}, ${tokens}, ${model} | ${date} ${time})`;
+				})
 				.join("\n");
 			setMessages((m) => [
 				...m,
 				{
 					id: msgIdRef.current++,
 					role: "system",
-					content: `Saved sessions:\n${list}\n\nUse: /load <id>`,
+					content: `Saved sessions (${sessions.length} total):\n${list}\n\nUse: /load <id> | /search <query>`,
 				},
 			]);
 		}
@@ -1403,13 +1410,31 @@ function ChatUI({
 										: JSON.stringify(m.content),
 							}));
 						if (loadedMsgs.length > 0) {
-							setMessages(loadedMsgs);
-							msgIdRef.current = loadedMsgs.length;
-							setShowWelcome(false);
 							setSessionId(recentId);
+								setShowWelcome(false);
+
 							if (data.metadata.model) {
 								setCtxModel(data.metadata.model);
 							}
+
+								const loadedModel = data.metadata.model || "Unknown model";
+								const creationDate = new Date(data.metadata.startTime).toLocaleDateString();
+								const tokensUsed = data.metadata.tokensUsed || 0;
+
+								setMessages([
+									...loadedMsgs,
+									{
+										id: loadedMsgs.length,
+										role: "system",
+										content: `✅ Successfully restored recent session: ${data.metadata.name || recentId.slice(0, 8)}\n\n` +
+												 `• Model: ${loadedModel}\n` +
+												 `• Messages: ${loadedMsgs.length}\n` +
+												 `• Tokens Used: ${tokensUsed.toLocaleString()}\n` +
+												 `• Created: ${creationDate}`,
+									}
+								]);
+								msgIdRef.current = loadedMsgs.length + 1;
+
 							return;
 						}
 					}
@@ -2058,12 +2083,21 @@ function ChatUI({
 					if (data.metadata.model) {
 						setCtxModel(data.metadata.model);
 					}
+
+						const loadedModel = data.metadata.model || "Unknown model";
+						const creationDate = new Date(data.metadata.startTime).toLocaleDateString();
+						const tokensUsed = data.metadata.tokensUsed || 0;
+
 					setMessages((m) => [
 						...m,
 						{
 							id: msgIdRef.current++,
 							role: "system",
-							content: `Loaded session: ${data.metadata.name || id.slice(0, 8)} (${loadedMsgs.length} messages)`,
+								content: `✅ Successfully restored session: ${data.metadata.name || id.slice(0, 8)}\n\n` +
+										 `• Model: ${loadedModel}\n` +
+										 `• Messages: ${loadedMsgs.length}\n` +
+										 `• Tokens Used: ${tokensUsed.toLocaleString()}\n` +
+										 `• Created: ${creationDate}`,
 						},
 					]);
 				} else {
