@@ -1691,7 +1691,7 @@ function ChatUI({
 		}
 
 		if (key.ctrl && k === "u") {
-			setInput("");
+			setInput(input.slice(cursorPos));
 			setCursorPos(0);
 			setHistoryIndex(-1);
 			return;
@@ -1810,12 +1810,32 @@ function ChatUI({
 
 		// Cursor navigation
 		if (key.leftArrow && !key.shift) {
-			setCursorPos((p) => Math.max(0, p - 1));
+			if (key.ctrl || key.meta) {
+				const before = input.slice(0, cursorPos);
+				const match = before.match(/\S+\s*$/);
+				if (match) {
+					setCursorPos(cursorPos - match[0].length);
+				} else {
+					setCursorPos(0);
+				}
+			} else {
+				setCursorPos((p) => Math.max(0, p - 1));
+			}
 			return;
 		}
 
 		if (key.rightArrow && !key.shift) {
-			setCursorPos((p) => Math.min(input.length, p + 1));
+			if (key.ctrl || key.meta) {
+				const after = input.slice(cursorPos);
+				const match = after.match(/^\s*\S+/);
+				if (match) {
+					setCursorPos(cursorPos + match[0].length);
+				} else {
+					setCursorPos(input.length);
+				}
+			} else {
+				setCursorPos((p) => Math.min(input.length, p + 1));
+			}
 			return;
 		}
 

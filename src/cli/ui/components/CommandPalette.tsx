@@ -15,6 +15,7 @@ export interface CommandItem {
 	description: string;
 	usage?: string;
 	shortcut?: string;
+	aliases?: string[];
 	category: "session" | "model" | "help" | "recent";
 	action: () => void;
 }
@@ -121,11 +122,17 @@ export function CommandPalette({
 				const labelMatch = fuzzyMatch(cmd.label, query);
 				const descMatch = fuzzyMatch(cmd.description, query);
 				const idMatch = fuzzyMatch(cmd.id, query);
+				const aliasesMatches = (cmd.aliases || []).map(alias => fuzzyMatch(alias, query));
+				const bestAliasMatch = aliasesMatches.reduce(
+					(best, curr) => (curr.score > best.score ? curr : best),
+					{ score: -1, indices: [] }
+				);
 
 				const matches = [
 					{ score: labelMatch.score, indices: labelMatch.indices, field: 'label' },
 					{ score: descMatch.score, indices: descMatch.indices, field: 'description' },
-					{ score: idMatch.score, indices: idMatch.indices, field: 'id' }
+					{ score: idMatch.score, indices: idMatch.indices, field: 'id' },
+					{ score: bestAliasMatch.score, indices: bestAliasMatch.indices, field: 'aliases' }
 				];
 
 				const bestMatch = matches.reduce(
@@ -247,11 +254,23 @@ export function CommandPalette({
 							const isSelected = flatIndex === selectedIndex;
 							let labelElements: React.ReactNode[];
 							let descElements: React.ReactNode[];
+								let aliasMatchElements: React.ReactNode[] = [];
 
 							if (query.trim() && cmd.matchIndices.length > 0) {
 								if (cmd.matchField === 'description') {
 									labelElements = [React.createElement(Text, { key: "label" }, cmd.label)];
 									descElements = highlightMatch(cmd.description, cmd.matchIndices);
+									} else if (cmd.matchField === 'aliases') {
+										labelElements = [React.createElement(Text, { key: "label" }, cmd.label)];
+										descElements = [React.createElement(Text, { key: "desc" }, cmd.description)];
+
+										// Find which alias matched to highlight it
+										const matchedAlias = cmd.aliases?.find(a => fuzzyMatch(a, query).score === cmd.matchScore) || cmd.aliases?.[0] || '';
+										aliasMatchElements = [
+											React.createElement(Text, { key: "alias-prefix", color: GRAY }, " (alias: "),
+											...highlightMatch(matchedAlias, cmd.matchIndices),
+											React.createElement(Text, { key: "alias-suffix", color: GRAY }, ")")
+										];
 								} else {
 									labelElements = highlightMatch(cmd.label, cmd.matchIndices);
 									descElements = [React.createElement(Text, { key: "desc" }, cmd.description)];
@@ -259,6 +278,11 @@ export function CommandPalette({
 							} else {
 								labelElements = [React.createElement(Text, { key: "label" }, cmd.label)];
 								descElements = [React.createElement(Text, { key: "desc" }, cmd.description)];
+									if (cmd.aliases && cmd.aliases.length > 0) {
+										aliasMatchElements = [
+											React.createElement(Text, { key: "aliases", color: GRAY, dimColor: true }, ` (aliases: ${cmd.aliases.join(', ')})`)
+										];
+									}
 							}
 
 							return React.createElement(
@@ -273,6 +297,7 @@ export function CommandPalette({
 										isSelected ? "▶ " : "  ",
 									),
 									...labelElements,
+										...aliasMatchElements,
 									cmd.usage &&
 										React.createElement(
 											Text,
@@ -365,6 +390,7 @@ export function createCommands(options: {
 			label: "/clear",
 			description: "Clear conversation history and reset context",
 			shortcut: "Ctrl+L",
+			aliases: ["/cls", "/c"],
 			category: "session",
 			action: options.onClear,
 		},
@@ -456,22 +482,24 @@ export function createCommands(options: {
 			category: "session",
 			action: options.onSkills || (() => {}),
 		},
-		{
-			id: "/help",
-			label: "/help",
-			description: "Show all commands and keyboard shortcuts",
-			shortcut: "Ctrl+P",
-			category: "help",
-			action: options.onHelp,
-		},
-	{
-		id: "/exit",
-		label: "/exit",
-		description: "Exit Tehuti CLI",
-		shortcut: "Ctrl+C",
-		category: "session",
-		action: options.onExit,
-	},
+			{
+				id: "/help",
+				label: "/help",
+				description: "Show all commands and keyboard shortcuts",
+				shortcut: "Ctrl+P",
+				aliases: ["/h"],
+				category: "help",
+				action: options.onHelp,
+			},
+			{
+				id: "/exit",
+				label: "/exit",
+				description: "Exit Tehuti CLI",
+				shortcut: "Ctrl+C",
+					aliases: ["/quit", "/q"],
+				category: "session",
+				action: options.onExit,
+			},
 	];
 
 	// Add recently used commands
@@ -555,15 +583,23 @@ export function getCommandSuggestions(
 	commands: CommandItem[],
 ): CommandItem[] {
 	if (!input.startsWith("/")) return [];
-	const query = input.slice(1).toLowerCase();
+	const query = input.toLowerCase();
+	const queryWithoutSlash = input.slice(1).toLowerCase();
 
 	return commands
 		.filter((cmd) => {
-			if (query === "") return true;
+			if (queryWithoutSlash === "") return true;
+
+			const hasAliasMatch = cmd.aliases?.some(alias =>
+				alias.toLowerCase().includes(query) ||
+				alias.slice(1).toLowerCase().includes(queryWithoutSlash)
+			);
+
 			return (
-				cmd.label.toLowerCase().includes(query) ||
-				cmd.id.toLowerCase().includes(query) ||
-				cmd.description.toLowerCase().includes(query)
+				cmd.label.toLowerCase().includes(queryWithoutSlash) ||
+				cmd.id.toLowerCase().includes(queryWithoutSlash) ||
+				cmd.description.toLowerCase().includes(queryWithoutSlash) ||
+				hasAliasMatch
 			);
 		})
 		.slice(0, 5);
