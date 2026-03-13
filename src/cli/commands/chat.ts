@@ -20,8 +20,8 @@ import React, {
 // Progress Bar Component
 const ProgressBar = ({ value, label, width = 40 }: { value: number; label?: string; width?: number }) => {
 	const filledWidth = Math.round((value / 100) * width);
-	const filled = "█".repeat(filledWidth);
-	const empty = "░".repeat(width - filledWidth);
+	const filled = "━".repeat(filledWidth);
+	const empty = "─".repeat(width - filledWidth);
 
 	return React.createElement(
 		Box,
@@ -2350,8 +2350,8 @@ function ChatUI({
 					{ marginBottom: 0 },
 					React.createElement(
 						Text,
-						{ bold: true, color: CORAL, backgroundColor: "#3D2820" },
-						` ${DECORATIVE.feather} You `,
+						{ bold: true, color: CORAL },
+						`${DECORATIVE.feather} You`,
 					),
 				);
 				content = [
@@ -2396,8 +2396,8 @@ function ChatUI({
 					},
 					React.createElement(
 						Text,
-						{ bold: true, color: GREEN, backgroundColor: "#1A3D2E" },
-						` ${DECORATIVE.ibis} Tehuti `,
+						{ bold: true, color: GREEN },
+						`${DECORATIVE.ibis} Tehuti`,
 					),
 					m.status &&
 						React.createElement(StatusIndicator, { status: m.status }),
@@ -2457,7 +2457,7 @@ function ChatUI({
 		return React.createElement(
 			Text,
 			{ color: CORAL },
-			`${DECORATIVE.scroll}${historyIndicator} ${before}\u2588${after}`,
+			`${DECORATIVE.feather} >${historyIndicator} ${before}\u2588${after}`,
 		);
 	}, [input, cursorPos, historyIndex, history.length]);
 
@@ -2534,7 +2534,16 @@ function ChatUI({
 				{ flexDirection: "column", width: "100%", height: "100%" },
 				React.createElement(
 					Box,
-					{ paddingX: 1, borderStyle: "single", borderColor: GOLD },
+					{
+						paddingX: 1,
+						borderTop: false,
+						borderLeft: false,
+						borderRight: false,
+						borderBottom: true,
+						borderStyle: "single",
+						borderColor: GOLD,
+						marginBottom: 1
+					},
 					React.createElement(
 						Text,
 						{ bold: true, color: GOLD },
@@ -2598,13 +2607,18 @@ function ChatUI({
 							{
 								marginBottom: 1,
 								paddingLeft: 2,
-								borderStyle: "round",
-								borderColor: NILE,
+								flexDirection: "row",
+								gap: 1,
 							},
 							React.createElement(
 								Text,
 								{ color: SAND, dimColor: true },
-								`  ${DECORATIVE.eye} ${thinking.length > 150 ? "..." + thinking.slice(-150) : thinking}${thinkingDots}`,
+								React.createElement(Spinner, { type: "dots" }),
+							),
+							React.createElement(
+								Text,
+								{ color: SAND, dimColor: true },
+								`${thinking.length > 150 ? "..." + thinking.slice(-150) : thinking}`,
 							),
 						),
 					scrollIndicator &&
@@ -2652,8 +2666,7 @@ function ChatUI({
 					Box,
 					{
 						paddingX: 1,
-						borderStyle: "single",
-						borderColor: SAND,
+						paddingTop: 1,
 						flexDirection: "column",
 					},
 					loading
