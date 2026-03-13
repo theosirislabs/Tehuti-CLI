@@ -41,20 +41,50 @@ function fuzzyMatch(
 	text: string,
 	query: string,
 ): { score: number; indices: number[] } {
+		if (!query) return { score: 0, indices: [] };
 	const textLower = text.toLowerCase();
 	const queryLower = query.toLowerCase();
 
 	let score = 0;
 	const indices: number[] = [];
 	let queryIdx = 0;
+		let consecutiveMatches = 0;
 
 	for (let i = 0; i < text.length && queryIdx < queryLower.length; i++) {
 		if (textLower[i] === queryLower[queryIdx]) {
-			score += queryIdx === 0 ? 3 : text[i] === query[queryIdx] ? 2 : 1;
+				// Base score
+				let charScore = 1;
+
+				// Exact case match bonus
+				if (text[i] === query[queryIdx]) charScore += 1;
+
+				// First character match bonus
+				if (i === 0) charScore += 5;
+
+				// Word boundary match bonus
+				if (i > 0 && /[\s\-_/]/.test(text[i - 1])) charScore += 3;
+
+				// Consecutive match bonus
+				if (consecutiveMatches > 0) charScore += consecutiveMatches * 2;
+				consecutiveMatches++;
+
+				score += charScore;
 			indices.push(i);
 			queryIdx++;
+			} else {
+				consecutiveMatches = 0;
 		}
 	}
+
+		// Exact match bonus
+		if (textLower === queryLower) {
+			score += 10;
+		}
+
+		// Starts with bonus
+		if (textLower.startsWith(queryLower)) {
+			score += 5;
+		}
 
 	if (queryIdx < queryLower.length) {
 		return { score: -1, indices: [] };

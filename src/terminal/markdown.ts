@@ -233,7 +233,7 @@ function codeBlock(code: string, language?: string): string {
 	const formatted = lines
 		.map((line, i) => {
 			const lineNum = String(i + 1).padStart(lineNumWidth);
-			return `${dim(lineNum)} │ ${line}`;
+				return `${dim(lineNum)} ${dim('│')} ${line}`;
 		})
 		.join("\n");
 
@@ -260,11 +260,17 @@ function renderInlineTokens(tokens: Token[]): string {
 			case "del":
 				result += strikethrough(renderInlineTokens(token.tokens || []));
 				break;
-			case "link":
-				result += blue(
-					ANSI.underline + renderInlineTokens(token.tokens || []) + ANSI.reset,
-				);
+			case "link": {
+				const linkText = renderInlineTokens(token.tokens || []);
+				const url = token.href;
+				// If terminal supports OSC 8 hyperlinks, we can format it nicely
+				if (shouldUseColors() && url) {
+					result += `\x1b]8;;${url}\x1b\\${blue(ANSI.underline + linkText + ANSI.reset)}\x1b]8;;\x1b\\`;
+				} else {
+					result += blue(ANSI.underline + linkText + ANSI.reset) + dim(` (${url})`);
+				}
 				break;
+			}
 			case "br":
 				result += "\n";
 				break;
@@ -335,45 +341,62 @@ function renderToken(token: Token, indent: string = ""): string {
 			const header = token.header || [];
 			const rows = token.rows || [];
 
+				const getCellText = (cell: Token | undefined): string => {
+					if (!cell) return "";
+					if ("tokens" in cell && Array.isArray(cell.tokens)) {
+						return renderInlineTokens(cell.tokens);
+					}
+					if ("text" in cell && typeof cell.text === "string") {
+						return cell.text;
+					}
+					return "";
+				};
+
+				const getPlainLength = (text: string): number => {
+					// Remove ANSI escape codes to calculate actual width
+					// eslint-disable-next-line no-control-regex
+					return text.replace(/\x1b\[[0-9;]*m|\x1b\]8;;.*?\x1b\\/g, "").length;
+				};
+
+				const padText = (text: string, width: number): string => {
+					const visibleLength = getPlainLength(text);
+					return text + " ".repeat(Math.max(0, width - visibleLength));
+				};
+
 			const widths: number[] = header.map((h: Token, i: number) => {
-				const headerLen =
-					"text" in h && typeof h.text === "string" ? h.text.length : 0;
+					const headerText = getCellText(h);
+					const headerLen = getPlainLength(headerText);
 				const rowLens = rows.map((r: Token[]) => {
-					const cell = r[i];
-					return cell && "text" in cell && typeof cell.text === "string"
-						? cell.text.length
-						: 0;
+						const cellText = getCellText(r[i]);
+						return getPlainLength(cellText);
 				});
 				return Math.max(headerLen, ...rowLens);
 			});
 
-			const border: string[] = widths.map((w: number) => "─".repeat(w + 2));
+				const border: string[] = widths.map((w: number) => dim("─".repeat(w + 2)));
 
 			let result = "\n";
-			result += `┌${border.join("┬")}┐\n`;
+				result += dim(`┌${border.join("┬")}┐`) + "\n";
 
 			const headerCells: string[] = header.map((h: Token, i: number) => {
-				const text = "text" in h && typeof h.text === "string" ? h.text : "";
+					const text = getCellText(h);
 				const width = widths[i];
-				return `│ ${bold(text.padEnd(width))} `;
+					return `${dim("│")} ${bold(padText(text, width))} `;
 			});
-			result += headerCells.join("") + "│\n";
+				result += headerCells.join("") + dim("│") + "\n";
 
-			result += `├${border.join("┼")}┤\n`;
+				result += dim(`├${border.join("┼")}┤`) + "\n";
 
 			for (const row of rows) {
 				const cells: string[] = row.map((cell: Token, i: number) => {
-					const text =
-						cell && "text" in cell && typeof cell.text === "string"
-							? cell.text
-							: "";
+						const text = getCellText(cell);
 					const width = widths[i];
-					return `│ ${text.padEnd(width)} `;
+						return `${dim("│")} ${padText(text, width)} `;
 				});
-				result += cells.join("") + "│\n";
+					result += cells.join("") + dim("│") + "\n";
 			}
 
-			result += `└${border.join("┴")}┘\n`;
+				result += dim(`└${border.join("┴")}┘`) + "\n";
 			return result;
 		}
 

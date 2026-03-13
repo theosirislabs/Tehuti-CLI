@@ -2693,7 +2693,8 @@ function ChatUI({
 						? React.createElement(
 								Text,
 								{ color: SAND, dimColor: true },
-								`  ${HIEROGLYPHS.loading[0]} channeling wisdom...`,
+									React.createElement(Text, { color: GOLD }, React.createElement(Spinner, { type: "dots" })),
+									" channeling wisdom..."
 							)
 						: renderInput,
 					commandSuggestions,
