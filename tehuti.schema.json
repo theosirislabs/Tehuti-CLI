@@ -1,0 +1,191 @@
+{
+  "name": "tehuti-cli",
+  "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/tehuti.json",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "model": { 
+      "type": "string", 
+      "default": "giga-potato",
+      "description": "The model to use for completions"
+    },
+    "fallbackModel": { 
+      "type": "string", 
+      "default": "minimax/minimax-m2.5:free",
+      "description": "Fallback model if primary fails"
+    },
+    "apiKey": { 
+      "type": "string",
+      "description": "API key for authentication (can use env var references)"
+    },
+    "baseUrl": {
+      "type": "string",
+      "default": "https://api.kilo.ai/api/gateway",
+      "description": "API base URL"
+    },
+    "provider": {
+      "type": "string",
+      "description": "AI provider to use",
+      "enum": ["openrouter", "kilocode", "custom"],
+      "default": "kilocode"
+    },
+    "customProvider": {
+      "type": "object",
+      "description": "Custom provider configuration",
+      "properties": {
+        "name": { "type": "string" },
+        "baseUrl": { "type": "string" },
+        "apiKey": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        }
+      },
+      "required": ["name", "baseUrl"]
+    },
+    "maxTokens": { 
+      "type": "integer", 
+      "default": 32000,
+      "minimum": 1,
+      "description": "Maximum tokens per completion"
+    },
+    "maxIterations": { 
+      "type": "integer", 
+      "default": 50,
+      "minimum": 1,
+      "description": "Maximum agent loop iterations"
+    },
+    "temperature": {
+      "type": "number",
+      "default": 0.7,
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Sampling temperature"
+    },
+    "extendedThinking": { "type": "boolean", "default": false },
+    "thinkingBudgetTokens": { "type": "integer", "minimum": 1024, "maximum": 100000 },
+    "requestTimeout": { "type": "integer", "default": 120000, "minimum": 5000, "maximum": 600000 },
+    "maxRetries": { "type": "integer", "default": 3, "minimum": 0, "maximum": 10 },
+    "modelSelection": {
+      "type": "string",
+      "enum": ["auto", "manual", "cost-optimized", "speed-optimized"],
+      "default": "auto"
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "defaultMode": {
+          "type": "string",
+          "enum": ["interactive", "trust", "readonly"],
+          "default": "interactive"
+        },
+        "alwaysAllow": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["read", "glob", "grep", "web_fetch", "web_search"]
+        },
+        "alwaysDeny": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "trustedMode": { "type": "boolean", "default": false },
+        "allowedCommands": { "type": "array", "items": { "type": "string" } },
+        "deniedCommands": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "servers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "command": { "type": "string" },
+              "args": { 
+                "type": "array", 
+                "items": { "type": "string" },
+                "default": []
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": { "type": "string" },
+                "default": {}
+              },
+              "disabled": { "type": "boolean", "default": false }
+            },
+            "required": ["command"]
+          }
+        }
+      }
+    },
+    "debug": { "type": "boolean", "default": false },
+    "telemetry": { "type": "boolean", "default": false },
+    "kilocode": {
+      "type": "object",
+      "properties": {
+        "memoryBank": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "sessionId": { "type": "string" },
+            "persistence": { "type": "string", "enum": ["memory", "disk"], "default": "memory" }
+          },
+          "required": ["enabled"]
+        },
+        "streamingOptions": {
+          "type": "object",
+          "properties": {
+            "thinking": { "type": "boolean", "default": true },
+            "codeReviews": { "type": "boolean", "default": false }
+          }
+        },
+        "contextManagement": {
+          "type": "object",
+          "properties": {
+            "autoSummarize": { "type": "boolean", "default": true },
+            "maxContextLength": { "type": "integer", "default": 32000, "minimum": 1024, "maximum": 100000 }
+          },
+          "required": ["autoSummarize"]
+        }
+      }
+    },
+    "grepai": {
+      "type": "object",
+      "properties": {
+        "memoryBank": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "path": { "type": "string" },
+            "compression": { "type": "boolean", "default": true }
+          },
+          "required": ["enabled"]
+        },
+        "indexing": {
+          "type": "object",
+          "properties": {
+            "parallel": { "type": "boolean", "default": false },
+            "maxWorkers": { "type": "integer", "default": 4, "minimum": 1, "maximum": 16 }
+          },
+          "required": ["parallel"]
+        }
+      }
+    },
+    "collaboration": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "sessionId": { "type": "string" },
+        "peers": { "type": "array", "items": { "type": "string" } },
+        "realTime": { "type": "boolean", "default": true }
+      },
+      "required": ["enabled"]
+    }
+  },
+  "required": ["model", "provider"],
+  "additionalProperties": false
+}
